@@ -1,5 +1,6 @@
-from typing import List, Tuple
+from typing import Tuple
 
+from numpy.linalg import inv
 from scipy.optimize import minimize
 import numpy as np
 
@@ -11,19 +12,29 @@ class GaussianProcess:
         """
         self.theta = theta
         self.noise = noise
-        self.mean = None
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Fit the Gaussian process to the given data.
         X: List of input values
         y: List of output values
         """
-        self.mean = np.mean(y)
         self.X = X
         self.y = y
-        kii = self._get_covariance_matrix(X, X)
-        kii += self.noise * np.eye(len(X))
-        self.K_inv = np.linalg.inv(kii)
+        self.kii = self._get_covariance_matrix(X, X)
+        self.kii += self.noise * np.eye(len(X))
+
+    def optimize(self, X, y) -> None:
+        """Optimize the kernel parameter theta and the noise parameter noise using the given data
+        X: List of input values
+        y: List of output values
+        """
+        def neg_log_likelihood(hyper_parameters: np.ndarray) -> float:
+            self.theta, self.noise = hyper_parameters
+            return -self._log_likelihood(X, y)[0]
+        
+        res = minimize(neg_log_likelihood, (self.theta, self.noise), method='L-BFGS-B', bounds=((1e-5, None), (1e-5, None)))
+        self.theta = res.x[0]
+        self.noise = res.x[1]
 
     def predict(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Return the mean prediction and its covariance matrix for the given input X
@@ -37,8 +48,8 @@ class GaussianProcess:
         training_matrix = self.X
 
         kx = self._get_covariance_matrix(prediction_matrix, training_matrix)
-        zeta = kx @ np.linalg.cholesky(self.K_inv).T @ self.y
-        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ np.linalg.cholesky(self.K_inv).T @ kx.T
+        zeta = kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ self.y
+        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ kx.T
         
         return zeta, sigma
     
@@ -54,31 +65,6 @@ class GaussianProcess:
         self.fit(X, y)
         zeta, sigma = self.predict(X)
         return np.random.multivariate_normal(zeta, sigma, n)
-    
-    def neg_log_likelihood(self, X, y) -> float:
-        """Return the negative log-likelihood of the given data
-        X: List of input values
-        y: List of output values
-        
-        Returns:
-        log_likelihood: Negative log-likelihood
-        """
-        self.fit(X, y)
-        # TODO: justify this
-        log_likelihood = -0.5 * y.T.dot(self.K_inv).dot(y) - 0.5 * np.log(np.linalg.det(self.K)) - 0.5 * len(X) * np.log(2*np.pi)
-        return -log_likelihood
-    
-    def optimize(self, X, y) -> None:
-        """Optimize the kernel parameter theta and the noise parameter noise using the given data
-        X: List of input values
-        y: List of output values
-        """
-        # TODO; code gradient descent from scratch?
-        res = minimize(self.neg_log_likelihood, self.theta, args=(X, y), method='L-BFGS-B', bounds=((1e-5, None),))
-        self.theta = res.x[0]
-
-        res = minimize(self.neg_log_likelihood, self.noise, args=(X, y), method='L-BFGS-B', bounds=((1e-5, None),))
-        self.noise = res.x[0]
 
     def _get_covariance_matrix(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Return the covariance matrix between the given matrixes
@@ -87,13 +73,22 @@ class GaussianProcess:
         Returns:
         covariance_matrix: Covariance matrix
         """
-        covariance_matrix = np.zeros((A.shape[0], B.shape[0]))
-        for i in range(A.shape[0]):
-            for j in range(B.shape[0]):
-                covariance_matrix[i,j] = self._kernel(A[i], B[j])
-        return covariance_matrix
+        return self._kernel(A[:, np.newaxis], B[np.newaxis, :])
     
     def _kernel(self, x1, x2) -> float:
         """Matern kernel with nu=5/2"""
-        return (1+np.sqrt(5)*(np.abs(x1-x2))/self.theta+(5*(x1-x2)**2)/(3*self.theta**2)) * np.exp(-np.sqrt(5)*(np.abs(x1-x2))/self.theta)
+        theta = self.theta + 1e-8  # Add a small constant to avoid division by zero
+        return (1 + np.sqrt(5) * (np.abs(x1 - x2)) / theta + (5 * (x1 - x2)**2) / (3 * theta**2)) * np.exp(-np.sqrt(5) * (np.abs(x1 - x2)) / theta)
+    
+    def _log_likelihood(self, X, y) -> float:
+        """Return the negative log-likelihood of the given data
+        X: List of input values
+        y: List of output values
+        
+        Returns:
+        log_likelihood: Negative log-likelihood
+        """
+        y = y.reshape(-1, 1) if y.ndim == 1 else y
+        self.fit(X, y)
+        return -0.5 * y.T.dot(inv(self.kii)).dot(y) - 0.5 * np.log(np.linalg.det(self.kii) + 1e-8) - 0.5 * len(X) * np.log(2*np.pi)
         
