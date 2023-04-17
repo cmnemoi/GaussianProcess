@@ -73,11 +73,7 @@ class GaussianProcess:
         Returns:
         covariance_matrix: Covariance matrix
         """
-        covariance_matrix = np.zeros((A.shape[0], B.shape[0]))
-        for i in range(A.shape[0]):
-            for j in range(B.shape[0]):
-                covariance_matrix[i,j] = self._kernel(A[i], B[j])
-        return covariance_matrix
+        return self._kernel(A[:, np.newaxis], B[np.newaxis, :])
     
     def _kernel(self, x1, x2) -> float:
         """Matern kernel with nu=5/2"""
