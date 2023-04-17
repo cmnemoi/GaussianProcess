@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Tuple
 
 from scipy.optimize import minimize
 import numpy as np
@@ -21,9 +21,26 @@ class GaussianProcess:
         self.mean = np.mean(y)
         self.X = X
         self.y = y
-        kii = self._get_covariance_matrix(X, X)
-        kii += self.noise * np.eye(len(X))
-        self.K_inv = np.linalg.inv(kii)
+        self.kii = self._get_covariance_matrix(X, X)
+        self.kii += self.noise * np.eye(len(X))
+        self.kii_inv = np.linalg.inv(self.kii)
+
+    def optimize(self, X, y) -> None:
+        """Optimize the kernel parameter theta and the noise parameter noise using the given data
+        X: List of input values
+        y: List of output values
+        """
+        def neg_log_likelihood(theta) -> float:
+            return -self._log_likelihood(X, y)
+        
+        # TODO; code gradient descent from scratch?
+        res = minimize(neg_log_likelihood, self.theta, method='L-BFGS-B', bounds=((1e-5, None),))
+        print(res)
+        self.theta = res.x[0]
+
+        res = minimize(neg_log_likelihood, self.noise, method='L-BFGS-B', bounds=((1e-5, None),))
+        print(res)
+        self.noise = res.x[0]
 
     def predict(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Return the mean prediction and its covariance matrix for the given input X
@@ -37,8 +54,8 @@ class GaussianProcess:
         training_matrix = self.X
 
         kx = self._get_covariance_matrix(prediction_matrix, training_matrix)
-        zeta = kx @ np.linalg.cholesky(self.K_inv).T @ self.y
-        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ np.linalg.cholesky(self.K_inv).T @ kx.T
+        zeta = kx @ np.linalg.cholesky(self.kii_inv).T @ self.y
+        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ np.linalg.cholesky(self.kii_inv).T @ kx.T
         
         return zeta, sigma
     
@@ -54,31 +71,6 @@ class GaussianProcess:
         self.fit(X, y)
         zeta, sigma = self.predict(X)
         return np.random.multivariate_normal(zeta, sigma, n)
-    
-    def neg_log_likelihood(self, X, y) -> float:
-        """Return the negative log-likelihood of the given data
-        X: List of input values
-        y: List of output values
-        
-        Returns:
-        log_likelihood: Negative log-likelihood
-        """
-        self.fit(X, y)
-        # TODO: justify this
-        log_likelihood = -0.5 * y.T.dot(self.K_inv).dot(y) - 0.5 * np.log(np.linalg.det(self.K)) - 0.5 * len(X) * np.log(2*np.pi)
-        return -log_likelihood
-    
-    def optimize(self, X, y) -> None:
-        """Optimize the kernel parameter theta and the noise parameter noise using the given data
-        X: List of input values
-        y: List of output values
-        """
-        # TODO; code gradient descent from scratch?
-        res = minimize(self.neg_log_likelihood, self.theta, args=(X, y), method='L-BFGS-B', bounds=((1e-5, None),))
-        self.theta = res.x[0]
-
-        res = minimize(self.neg_log_likelihood, self.noise, args=(X, y), method='L-BFGS-B', bounds=((1e-5, None),))
-        self.noise = res.x[0]
 
     def _get_covariance_matrix(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Return the covariance matrix between the given matrixes
@@ -96,4 +88,16 @@ class GaussianProcess:
     def _kernel(self, x1, x2) -> float:
         """Matern kernel with nu=5/2"""
         return (1+np.sqrt(5)*(np.abs(x1-x2))/self.theta+(5*(x1-x2)**2)/(3*self.theta**2)) * np.exp(-np.sqrt(5)*(np.abs(x1-x2))/self.theta)
+    
+    def _log_likelihood(self, X, y) -> float:
+        """Return the negative log-likelihood of the given data
+        X: List of input values
+        y: List of output values
+        
+        Returns:
+        log_likelihood: Negative log-likelihood
+        """
+        self.fit(X, y)
+        # TODO: justify this
+        return -0.5 * y.T.dot(self.kii_inv).dot(y) - 0.5 * np.log(np.linalg.det(self.kii)) - 0.5 * len(X) * np.log(2*np.pi)
         
