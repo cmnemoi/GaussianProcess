@@ -53,7 +53,7 @@ class GaussianProcess:
         
         return zeta, sigma
     
-    def sample(self, X, y, n=1) -> np.ndarray:
+    def sample(self, X, n=1) -> np.ndarray:
         """Return n samples from the Gaussian process for the given input X
         X: List of input values
         y: List of output values
@@ -62,7 +62,6 @@ class GaussianProcess:
         Returns:
         samples: Samples from the Gaussian process
         """
-        self.fit(X, y)
         zeta, sigma = self.predict(X)
         return np.random.multivariate_normal(zeta, sigma, n)
 
