@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from numpy.linalg import cholesky, inv
+from numpy.linalg import inv
 from scipy.optimize import minimize
 import numpy as np
 
@@ -22,6 +22,7 @@ class GaussianProcess:
         self.y = y
         self.kii = self._get_covariance_matrix(X, X)
         self.kii += self.noise * np.eye(len(X))
+        self.kii_inv = inv(self.kii)
 
     def optimize(self, X, y) -> None:
         """Optimize the kernel parameter theta and the noise parameter noise using the given data
@@ -48,8 +49,8 @@ class GaussianProcess:
         training_matrix = self.X
 
         kx = self._get_covariance_matrix(prediction_matrix, training_matrix)
-        zeta = kx @ inv(cholesky(self.kii)) @ self.y
-        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(cholesky(self.kii)) @ kx.T
+        zeta = kx @ self.kii_inv @ self.y
+        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ self.kii_inv @ kx.T
         
         return zeta, sigma
     
