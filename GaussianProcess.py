@@ -31,15 +31,14 @@ class GaussianProcess:
         y: List of output values
         """
         def neg_log_likelihood(theta) -> float:
+            self.theta = theta[0]
             return -self._log_likelihood(X, y)
         
         # TODO; code gradient descent from scratch?
         res = minimize(neg_log_likelihood, self.theta, method='L-BFGS-B', bounds=((1e-5, None),))
-        print(res)
         self.theta = res.x[0]
 
         res = minimize(neg_log_likelihood, self.noise, method='L-BFGS-B', bounds=((1e-5, None),))
-        print(res)
         self.noise = res.x[0]
 
     def predict(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
