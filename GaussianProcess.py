@@ -5,13 +5,10 @@ from scipy.optimize import minimize
 import numpy as np
 
 class GaussianProcess:
-    def __init__(self, theta: float, noise: float):
-        """Gaussian process with Matern kernel and zero mean function.
-        theta: Kernel parameter
-        noise: Noise parameter
-        """
-        self.theta = theta
-        self.noise = noise
+    def __init__(self):
+        """Gaussian process."""
+        self.theta = 0.01
+        self.noise = 1e-5
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Fit the Gaussian process to the given data.
