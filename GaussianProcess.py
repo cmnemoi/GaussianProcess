@@ -7,7 +7,7 @@ import numpy as np
 class GaussianProcess:
     def __init__(self):
         """Gaussian process."""
-        self.theta = 0.01
+        self.theta = 1e-1
         self.noise = 1e-5
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
@@ -25,11 +25,12 @@ class GaussianProcess:
         X: List of input values
         y: List of output values
         """
-        def neg_log_likelihood(hyper_parameters: np.ndarray) -> float:
+
+        def negative_log_likelihood(hyper_parameters: np.ndarray) -> float:
             self.theta, self.noise = hyper_parameters
             return -self._log_likelihood(X, y)[0]
         
-        res = minimize(neg_log_likelihood, (self.theta, self.noise), method='L-BFGS-B', bounds=((1e-5, None), (1e-5, None)))
+        res = minimize(negative_log_likelihood, (self.theta, self.noise), method='L-BFGS-B', bounds=((1e-5, None), (1e-5, None)))
         self.theta = res.x[0]
         self.noise = res.x[1]
 
@@ -61,6 +62,16 @@ class GaussianProcess:
         """
         zeta, sigma = self.predict(X)
         return np.random.multivariate_normal(zeta, sigma, n)
+    
+    def score(self, X, y) -> float:
+        """Return the mean squared error of prediction for the given (X, y) data
+        X: List of input values
+        y: List of output values
+        
+        Returns:
+        mse: Mean squared error
+        """
+        return np.mean((self.predict(X)[0] - y)**2)
 
     def _get_covariance_matrix(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Return the covariance matrix between the given matrixes
