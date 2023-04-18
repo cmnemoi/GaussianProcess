@@ -51,7 +51,7 @@ class GaussianProcess:
         zeta = kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ self.y
         sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ kx.T
         
-        return zeta, sigma
+        return zeta.ravel(), sigma
     
     def sample(self, X, n=1) -> np.ndarray:
         """Return n samples from the Gaussian process for the given input X
