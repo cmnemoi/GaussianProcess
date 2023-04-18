@@ -1,3 +1,5 @@
+from copy import copy
+
 import numpy as np   
 
 class ExponentialTransformer():
@@ -17,9 +19,10 @@ class ExponentialTransformer():
         Returns:
         X: Transformed data
         """
-        X -= self.min
-        X = np.exp(X)
-        return X
+        new_X = copy(X)
+        new_X -= self.min
+        new_X = np.exp(new_X)
+        return new_X
 
     def inverse_transform(self, X: np.ndarray) -> np.ndarray:
         """Inverse transform the given data.
@@ -28,9 +31,10 @@ class ExponentialTransformer():
         Returns:
         X: Inverse transformed data
         """
-        X = np.log(X)
-        X += self.min
-        return X
+        new_X = copy(X)
+        new_X = np.log(new_X)
+        new_X += self.min
+        return new_X
     
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """Fit the transformation to the given data and transform it.
@@ -61,9 +65,10 @@ class StandardScaler():
         Returns:
         X: Transformed data
         """
-        X -= self.mean
-        X /= self.std
-        return X
+        new_X = copy(X)
+        new_X -= self.mean
+        new_X /= self.std
+        return new_X
 
     def inverse_transform(self, X: np.ndarray) -> np.ndarray:
         """Inverse transform the given data.
@@ -72,9 +77,10 @@ class StandardScaler():
         Returns:
         X: Inverse transformed data
         """
-        X *= self.std
-        X += self.mean
-        return X
+        new_X = copy(X)
+        new_X *= self.std
+        new_X += self.mean
+        return new_X
     
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """Fit the scaler to the given data and transform it.
