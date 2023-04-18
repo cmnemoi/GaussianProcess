@@ -5,13 +5,10 @@ from scipy.optimize import minimize
 import numpy as np
 
 class GaussianProcess:
-    def __init__(self, theta: float, noise: float):
-        """Gaussian process with Matern kernel and zero mean function.
-        theta: Kernel parameter
-        noise: Noise parameter
-        """
-        self.theta = theta
-        self.noise = noise
+    def __init__(self):
+        """Gaussian process."""
+        self.theta = 1e-1
+        self.noise = 1e-5
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Fit the Gaussian process to the given data.
@@ -28,11 +25,12 @@ class GaussianProcess:
         X: List of input values
         y: List of output values
         """
-        def neg_log_likelihood(hyper_parameters: np.ndarray) -> float:
+
+        def negative_log_likelihood(hyper_parameters: np.ndarray) -> float:
             self.theta, self.noise = hyper_parameters
             return -self._log_likelihood(X, y)[0]
         
-        res = minimize(neg_log_likelihood, (self.theta, self.noise), method='L-BFGS-B', bounds=((1e-5, None), (1e-5, None)))
+        res = minimize(negative_log_likelihood, (self.theta, self.noise), method='L-BFGS-B', bounds=((1e-5, None), (1e-5, None)))
         self.theta = res.x[0]
         self.noise = res.x[1]
 
@@ -51,9 +49,9 @@ class GaussianProcess:
         zeta = kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ self.y
         sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ kx.T
         
-        return zeta, sigma
+        return zeta.ravel(), sigma
     
-    def sample(self, X, y, n=1) -> np.ndarray:
+    def sample(self, X, n=1) -> np.ndarray:
         """Return n samples from the Gaussian process for the given input X
         X: List of input values
         y: List of output values
@@ -62,9 +60,18 @@ class GaussianProcess:
         Returns:
         samples: Samples from the Gaussian process
         """
-        self.fit(X, y)
         zeta, sigma = self.predict(X)
         return np.random.multivariate_normal(zeta, sigma, n)
+    
+    def score(self, X, y) -> float:
+        """Return the mean squared error of prediction for the given (X, y) data
+        X: List of input values
+        y: List of output values
+        
+        Returns:
+        mse: Mean squared error
+        """
+        return np.mean((self.predict(X)[0] - y)**2)
 
     def _get_covariance_matrix(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Return the covariance matrix between the given matrixes
