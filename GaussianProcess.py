@@ -5,10 +5,11 @@ from scipy.optimize import minimize
 import numpy as np
 
 class GaussianProcess:
-    def __init__(self):
+    def __init__(self, kernel: str = 'matern') -> None:
         """Gaussian process."""
         self.theta = 1e-1
         self.noise = 1e-5
+        self.kernel = kernel
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Fit the Gaussian process to the given data.
@@ -83,9 +84,16 @@ class GaussianProcess:
         return self._kernel(A[:, np.newaxis], B[np.newaxis, :])
     
     def _kernel(self, x1, x2) -> float:
-        """Matern kernel with nu=5/2"""
-        theta = self.theta + 1e-8  # Add a small constant to avoid division by zero
-        return (1 + np.sqrt(5) * (np.abs(x1 - x2)) / theta + (5 * (x1 - x2)**2) / (3 * theta**2)) * np.exp(-np.sqrt(5) * (np.abs(x1 - x2)) / theta)
+        """Return the kernel value between the given input values x1 and x2"""
+        match self.kernel:
+            case 'exp_sin_squared':
+                return self._exp_sin_squared_kernel(x1, x2)
+            case 'matern':
+                return self._matern_kernel(x1, x2)
+            case 'rational_quadratic':
+                return self._rational_quadratic_kernel(x1, x2)
+            case _:
+                raise ValueError(f'Kernel {self.kernel} not supported')
     
     def _log_likelihood(self, X, y) -> float:
         """Return the negative log-likelihood of the given data
@@ -97,5 +105,22 @@ class GaussianProcess:
         """
         y = y.reshape(-1, 1) if y.ndim == 1 else y
         self.fit(X, y)
-        return -0.5 * y.T.dot(inv(self.kii)).dot(y) - 0.5 * np.log(np.linalg.det(self.kii) + 1e-8) - 0.5 * len(X) * np.log(2*np.pi)
+        return -0.5 * y.T @ inv(self.kii) @ y - 0.5 * np.log(np.linalg.det(self.kii) + 1e-8) - 0.5 * len(X) * np.log(2*np.pi)
+
+    def _exp_sin_squared_kernel(self, x1, x2) -> float:
+        """Return the exponential sine squared kernel value between the given input values x1 and x2"""
+        theta = self.theta + 1e-8
+        return np.exp(-2 * np.sin(np.pi * np.abs(x1 - x2))**2 / theta**2)
+    
+    def _matern_kernel(self, x1, x2) -> float:
+        """Return the Matern kernel value with mu = 5/2 between the given input values x1 and x2"""
+        theta = self.theta + 1e-8
+        return (1 + np.sqrt(5) * (np.abs(x1 - x2)) / theta + (5 * (x1 - x2)**2) / (3 * theta**2)) * np.exp(-np.sqrt(5) * (np.abs(x1 - x2)) / theta)
+    
+    def _rational_quadratic_kernel(self, x1, x2) -> float:
+        """Return the rational quadratic kernel value between the given input values x1 and x2"""
+        theta = self.theta + 1e-8
+        return 1 + (x1 - x2)**2 / (2 * theta**2)
+    
+    
         
