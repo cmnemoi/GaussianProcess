@@ -47,8 +47,8 @@ class GaussianProcess:
         training_matrix = self.X
 
         kx = self._get_covariance_matrix(prediction_matrix, training_matrix)
-        zeta = kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ self.y
-        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii + self.noise**2 * np.eye(len(self.X))) @ kx.T
+        zeta = kx @ inv(self.kii) @ self.y
+        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii) @ kx.T
         
         return zeta.ravel(), sigma
     
