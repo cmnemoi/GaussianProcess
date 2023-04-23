@@ -86,8 +86,8 @@ class GaussianProcess:
     def _kernel(self, x1, x2) -> float:
         """Return the kernel value between the given input values x1 and x2"""
         match self.kernel:
-            case 'exp_sin_squared':
-                return self._exp_sin_squared_kernel(x1, x2)
+            case 'exp_sine_squared':
+                return self._exp_sine_squared_kernel(x1, x2)
             case 'matern':
                 return self._matern_kernel(x1, x2)
             case 'rational_quadratic':
@@ -107,20 +107,20 @@ class GaussianProcess:
         self.fit(X, y)
         return -0.5 * y.T @ inv(self.kii) @ y - 0.5 * np.log(np.linalg.det(self.kii) + 1e-8) - 0.5 * len(X) * np.log(2*np.pi)
 
-    def _exp_sin_squared_kernel(self, x1, x2) -> float:
-        """Return the exponential sine squared kernel value between the given input values x1 and x2"""
-        theta = self.theta + 1e-8
+    def _exp_sine_squared_kernel(self, x1, x2) -> float:
+        """Return the exponential sine squared (with p=1) kernel value between the given input values x1 and x2"""
+        theta = self.theta + 1e-8 # Add small value to avoid division by zero
         return np.exp(-2 * np.sin(np.pi * np.abs(x1 - x2))**2 / theta**2)
     
     def _matern_kernel(self, x1, x2) -> float:
         """Return the Matern kernel value with mu = 5/2 between the given input values x1 and x2"""
-        theta = self.theta + 1e-8
+        theta = self.theta + 1e-8 # Add small value to avoid division by zero
         return (1 + np.sqrt(5) * (np.abs(x1 - x2)) / theta + (5 * (x1 - x2)**2) / (3 * theta**2)) * np.exp(-np.sqrt(5) * (np.abs(x1 - x2)) / theta)
     
     def _rational_quadratic_kernel(self, x1, x2) -> float:
-        """Return the rational quadratic kernel value between the given input values x1 and x2"""
-        theta = self.theta + 1e-8
-        return 1 + (x1 - x2)**2 / (2 * theta**2)
+        """Return the rational quadratic kernel (with alpha=1) value between the given input values x1 and x2"""
+        theta = self.theta + 1e-8 # Add small value to avoid division by zero
+        return (1 + (np.abs(x1 - x2)**2) / (2 * theta))**(-1)
     
     
         
