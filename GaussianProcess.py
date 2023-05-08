@@ -8,7 +8,7 @@ class GaussianProcess:
     def __init__(self, kernel: str = 'matern') -> None:
         """Gaussian process."""
         self.theta = 1e-1
-        self.noise = 1e-5
+        self.noise = 1e-5 # Hyper parameter for trying to catch the noise in the data
         self.kernel = kernel
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
@@ -18,8 +18,8 @@ class GaussianProcess:
         """
         self.X = X
         self.y = y
-        self.kii = self._get_covariance_matrix(X, X)
-        self.kii += self.noise * np.eye(len(X))
+        self.kii = self._get_covariance_matrix(X, X) # Covariance matrix of the training data
+        self.kii += self.noise * np.eye(len(X)) # Add noise to the covariance matrix
 
     def optimize(self, X, y) -> None:
         """Optimize the kernel parameter theta and the noise parameter noise using the given data
@@ -46,9 +46,9 @@ class GaussianProcess:
         prediction_matrix = X
         training_matrix = self.X
 
-        kx = self._get_covariance_matrix(prediction_matrix, training_matrix)
-        zeta = kx @ inv(self.kii) @ self.y
-        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii) @ kx.T
+        kx = self._get_covariance_matrix(prediction_matrix, training_matrix) # Covariance matrix between the prediction and training data
+        zeta = kx @ inv(self.kii) @ self.y # Mean prediction
+        sigma = self._get_covariance_matrix(prediction_matrix, prediction_matrix) - kx @ inv(self.kii) @ kx.T # Covariance matrix of the prediction
         
         return zeta.ravel(), sigma
     
